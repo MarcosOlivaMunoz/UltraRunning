@@ -23,7 +23,7 @@ ultrarunning1 <- ultrarunning %>% mutate(teique_sf = ordered(cut(.$teique_sf, 3)
 ultrarunning2 <- ultrarunning %>% mutate(steu_b = ordered(cut(.$steu_b, 3),labels=c("Bajo","Medio","Alto")))
 ultrarunning3 <- ultrarunning %>% mutate(stem_b = ordered(cut(.$stem_b, 3),labels=c("Bajo","Medio","Alto")))
 ultrarunning_tot <- ultrarunning  %>% mutate(teique_sf = ordered(cut(.$teique_sf, 3),labels=c("Bajo","Medio","Alto"))) %>% mutate(steu_b = ordered(cut(.$steu_b, 3),labels=c("Bajo","Medio","Alto"))) %>% mutate(stem_b = ordered(cut(.$stem_b, 3),labels=c("Bajo","Medio","Alto")))
-
+ultrarunning_cuantitativas <- ultrarunning_tot%>%select(1,4,6,7) %>%na.omit
 
 df1 <- ultrarunning1 %>% filter(teique_sf == "Bajo") %>% select(where(is.numeric)) %>%
   summarise(across(everything(), mean)) %>% add_row(ultrarunning1 %>% filter(teique_sf == "Medio") %>%
@@ -37,3 +37,14 @@ df3 <- ultrarunning3 %>% filter(stem_b == "Bajo") %>% select(where(is.numeric)) 
   summarise(across(everything(), mean)) %>% add_row(ultrarunning3 %>% filter(stem_b == "Medio") %>%
   select(where(is.numeric)) %>% summarise(across(everything(), mean))) %>%add_row(ultrarunning3 %>%
   filter(stem_b == "Alto") %>% select(where(is.numeric)) %>% summarise(across(everything(), mean)))
+
+
+ultrarunning_cuantitativas <- ultrarunning_tot%>%select(1,4,6,7) %>%na.omit
+library(mvnormtest)
+# Usaremos el test Shapiro-Wilk para ver si sigue una distribución normal multivariante
+x=t(ultrarunning_cuantitativas)
+mshapiro.test(x)
+#Observamos que no pasa el test pues el p-valor es de 9.742e-06 y por tanto no pasa el test y no sigue una normal multivariante.
+
+
+

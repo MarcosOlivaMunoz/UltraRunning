@@ -46,5 +46,8 @@ x=t(ultrarunning_cuantitativas)
 mshapiro.test(x)
 #Observamos que no pasa el test pues el p-valor es de 9.742e-06 y por tanto no pasa el test y no sigue una normal multivariante.
 
-
+qqPlot(x[,1],main="age")
+qqPlot(x[,2],main = "pb_elev")
+qqPlot(x[,3],main = "pb100k_dec")
+qqPlot(x[,4],main = "avg_km")
 

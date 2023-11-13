@@ -1,0 +1,154 @@
+---
+title: "Ultrarunning"
+subtitle: "Análisis multivariante"
+author:
+  - "Marcos Oliva"
+  - "Hugo García"
+date: 10/30/2023
+format:
+  revealjs:
+    theme: beige
+embed-resources: true
+lang: ES
+---
+
+# Introducción y variables
+```{r Setup}
+#| include: false
+
+knitr::opts_chunk$set(echo=FALSE)
+library("tidyverse", warn.conflicts = FALSE)
+library(ggcorrplot)
+library(GGally)
+load(url("https://www.causeweb.org/tshs/datasets/ultrarunning.RData"))
+```
+
+## Sobre los datos
+::: {.incremental}
+- La Inteligencia Emocional tiene una relación con el éxito profesional y en las relaciones interpersonales
+- 288 competidores de ultra-maratones de 100km los cuales tomaron un test de inteligencia emocional
+- El test se divide en tres categorías: inteligencia, comprensión y gestión
+- El objetivo es determinar si los resultados del test ayudan a predecir el tiempo final del maratón
+:::
+::: {.notes}
+La Inteligencia Emocional (EI, en inglés), dada la definición de la RAE, es "la capacidad de percibir y controlar los propios sentimientos y saber interpretar los de los demás". Su aplicación ha proporcionado importantes conocimientos sobre el papel de la inteligencia emocional en muchos aspectos de nuestras vidas, incluido el éxito profesional, el liderazgo y el éxito en las relaciones interpersonales. Entonces, es lógico pensar que también puede estar involucrada en el rendimiento deportivo, como en los ultra-maratones de 100 km, donde se puede esperar que este incite emociones muy fuertes y el deseo de abandonar.
+
+El dataset contienen los datos de 288 individuos que completaron ultra-maratones de 100 km y a los cuales se le aplicaron una prueba de inteligencia emocional en tres partes (Tripartite-EI).
+
+Brevemente, el modelo Tripartite-EI postula que la inteligencia emocional opera en tres niveles: inteligencia, comprensión y gestión. La inteligencia representa lo que sabemos sobre nuestras emociones y las de los demás, su origen y cómo gestionarlas; la comprensión representa nuestra habilidad para implementar nuestra inteligencia emocional en tiempo real; y la gestión representa nuestros patrones habituales de respuesta a las emociones.
+:::
+
+## Variables {.scrollable}
+
+-   `age`: (cuantitativo discreto) muestra el año de nacimiento del competidor
+-   `sex`: (cualitativo) muestra el sexo de nacimiento del competidor. Pueden ser hombre o mujer, siendo marcados como $1$ y $2$, respectivamente
+-   `pb_surface`: (cualitativo) muestra la superficie en la cual los competidores consiguieron su mejor tiempo de la carrera de 100 km. Hay 4 diferentes: *Sendero*, *Pista*, *Carretera* y *Mixto*, siendo marcados como $1$, $2$, $3$ y $4$, respectivamente
+-   `pb_elev`: (cuantitativo contínuo) que muestra la suma de todos los cambios de elevación positivos a lo largo de toda la carrera en la cual obtenieron su mejor tiempo en metros
+-   `pb100k_time`: muestra el mejor tiempo del competidor (auto-proclamado) en el formato de hora estándard `hh:mm:ss`
+-   `pb100k_dec`: (cuantitativo contínuo) muestra el mejor tiempo del competidor (auto-proclamado) en horas
+-   `avg_km`: (cuantitativo contínuo) muestra la distancia media que el competidor corre cada semana (auto-proclamado) en kilómetros
+-   `teique_sf`: (cuantitativo contínuo) muestra la puntuación en la prueba de inteligencia emocional. El número está entre $1$ y $7$ y proviene de la media de 30 valores
+-   `steu_b`: (cuantitativo contínuo) muestra la puntuación en la prueba de comprensión emocional. El número está entre $0$ y $19$ y proviene de la suma de 19 valores
+-   `stem_b`: (cuantitativo contínuo) muestra la puntuación en la prueba de gestión emocional. El número está entre $0$ y $18$ y proviene de la suma de 19 valores
+
+# Gráficos multivariantes
+
+## Según el sexo
+
+```{r}
+#| include: false
+ultrarunning <- ultrarunning %>% as_tibble() %>% mutate(sex = factor(sex,
+  levels=c(1, 2), labels=c("Male", "Female"))) %>% mutate(pb_surface =
+  factor(pb_surface,  levels=c(1, 2, 3, 4), labels=c("Trail", "Track", "Road",
+  "Mixed"))) %>% na.omit()
+ultrarunning1 <- ultrarunning %>% mutate(teique_sf = ordered(cut(.$teique_sf, 3),labels=c("Bajo","Medio","Alto")))
+ultrarunning2 <- ultrarunning %>% mutate(steu_b = ordered(cut(.$steu_b, 3),labels=c("Bajo","Medio","Alto")))
+ultrarunning3 <- ultrarunning %>% mutate(stem_b = ordered(cut(.$stem_b, 3),labels=c("Bajo","Medio","Alto")))
+ultrarunning_tot <- ultrarunning %>% mutate(teique_sf = ordered(cut(.$teique_sf, 3),labels=c("Bajo","Medio","Alto"))) %>% mutate(steu_b = ordered(cut(.$steu_b, 3),labels=c("Bajo","Medio","Alto"))) %>% mutate(stem_b = ordered(cut(.$stem_b, 3),labels=c("Bajo","Medio","Alto")))
+```
+
+```{r}
+a <- ultrarunning %>% select(2,1,4,6,7,8,9,10)
+pairs(a, col = c("blue", "red")[as.integer(a$sex)], pch = 18)
+```
+
+---
+
+:::{.panel-tabset}
+### Hombres
+```{r}
+a<-ultrarunning %>%filter(sex == "Male")%>%
+  select(2,1,4,6,7,8,9,10) %>%
+  na.omit
+ggpairs(a)
+
+a<-ultrarunning %>%filter(sex == "Male") %>%
+  select(1,4,6,7,8,9,10)
+stars(a,key.loc = c(15, 1),cex=0.45,
+      labels=row.names(a), draw.segments=TRUE)
+```
+
+### Mujeres
+
+```{r}
+#gráfico para ver sólo las mujeres
+a<-ultrarunning %>%filter(sex == "Female")%>%
+  select(2,1,4,6,7,8,9,10) %>%
+  na.omit
+ggpairs(a)
+
+a<-ultrarunning %>%filter(sex == "Female") %>%
+  select(1,4,6,7,8,9,10)
+stars(a,key.loc = c(36, 1),cex=0.45,
+      labels=row.names(a), draw.segments=TRUE)
+```
+:::
+
+## Según la superficie
+
+```{r}
+a <- ultrarunning %>% select(3,1,4,6,7,8,9,10)
+pairs(a,
+      col = c("green", "purple","orange","blue")[as.integer(a$pb_surface)],
+      pch = 18)
+```
+
+---
+
+```{r}
+#| include: false
+
+df1 <- ultrarunning1 %>% filter(teique_sf == "Bajo") %>% select(where(is.numeric)) %>%
+  summarise(across(everything(), mean)) %>% add_row(ultrarunning1 %>% filter(teique_sf == "Medio") %>%
+  select(where(is.numeric)) %>% summarise(across(everything(), mean))) %>%add_row(ultrarunning1 %>%
+  filter(teique_sf == "Alto") %>% select(where(is.numeric)) %>% summarise(across(everything(), mean)))
+df2 <- ultrarunning2 %>% filter(steu_b == "Bajo") %>% select(where(is.numeric)) %>%
+  summarise(across(everything(), mean)) %>% add_row(ultrarunning2 %>% filter(steu_b == "Medio") %>%
+  select(where(is.numeric)) %>% summarise(across(everything(), mean))) %>%add_row(ultrarunning2 %>%
+  filter(steu_b == "Alto") %>% select(where(is.numeric)) %>% summarise(across(everything(), mean)))
+df3 <- ultrarunning3 %>% filter(stem_b == "Bajo") %>% select(where(is.numeric)) %>%
+  summarise(across(everything(), mean)) %>% add_row(ultrarunning3 %>% filter(stem_b == "Medio") %>%
+  select(where(is.numeric)) %>% summarise(across(everything(), mean))) %>%add_row(ultrarunning3 %>%
+  filter(stem_b == "Alto") %>% select(where(is.numeric)) %>% summarise(across(everything(), mean)))
+```
+
+:::{.panel-tabset}
+
+### Inteligencia
+
+```{r}
+stars(df1,key.loc=c(5.5,2.25),cex=0.5,labels=row.names(df1),draw.segments=TRUE)
+```
+
+### Compresión
+
+```{r}
+stars(df2,key.loc=c(5.5,2.25),cex=0.5,labels=row.names(df1),draw.segments=TRUE)
+```
+
+### Gestión
+
+```{r}
+stars(df3,key.loc=c(5.5,2.25),cex=0.5,labels=row.names(df1),draw.segments=TRUE)
+```
+:::

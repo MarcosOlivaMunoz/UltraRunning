@@ -1,0 +1,219 @@
+---
+title: "Entrega 3"
+subtitle: "Análisis de datos multivariable"
+author:
+  - "Marcos Oliva"
+  - "Hugo García"
+date: 10/02/2023
+format: html
+embed-resources: true
+lang: ES
+---
+
+```{r Setup, include=FALSE}
+knitr::opts_chunk$set(echo=FALSE)
+library("tidyverse", warn.conflicts = FALSE)
+library(ggcorrplot)
+library(GGally)
+load(url("https://www.causeweb.org/tshs/datasets/ultrarunning.RData"))
+```
+
+# Introducción
+
+En las siguientes secciones, vamos a hacer un análisis multivariable sobre el dataset `UltraRunning`, proveniente de la base de datos de [Teaching of Statistics in the Health Sciences](https://www.causeweb.org/tshs/ultra-running). Para acceder al repositorio de GitHub de esta entrega, haga clic [aquí](https://github.com/MarcosOlivaMunoz/Entrega-3-AD.git).
+
+## Sobre los datos
+
+La Inteligencia Emocional (EI, en inglés), dada la definición de la RAE, es "la capacidad de percibir y controlar los propios sentimientos y saber interpretar los de los demás". Su aplicación ha proporcionado importantes conocimientos sobre el papel de la inteligencia emocional en muchos aspectos de nuestras vidas, incluido el éxito profesional, el liderazgo y el éxito en las relaciones interpersonales. Estudios recientes también han explorado el rol de la inteligencia emocional en el rendimiento deportivo y, en particular, el rol de la inteligencia emocional en el rendimiento de deportes de resistencia extrema. Un ejemplo son las ultra-maratones de 100 km, donde se puede esperar que este incite emociones muy fuertes y el deseo de abandonar.
+
+El dataset contienen los datos de 288 individuos que completaron ultra-maratones de 100 km y a los cuales se le aplicaron una prueba de inteligencia emocional en tres partes (Tripartite-EI).
+
+Brevemente, el modelo Tripartite-EI postula que la inteligencia emocional opera en tres niveles: inteligencia, comprensión y gestión. La inteligencia representa lo que sabemos sobre nuestras emociones y las de los demás, su origen y cómo gestionarlas; la comprensión representa nuestra habilidad para implementar nuestra inteligencia emocional en tiempo real; y la gestión representa nuestros patrones habituales de respuesta a las emociones.
+
+## Variables
+
+Este dataset tiene 10 variables diferentes, que explicaremos a continuación:
+
+-   `age`: Este es un dato cuantitativo discreto que muestra el año de nacimiento del competidor.
+-   `sex`: Este es un dato cualitativo que muestra el sexo de nacimiento del competidor. Pueden ser hombre o mujer, siendo marcados como $1$ y $2$, respectivamente.
+-   `pb_surface`: Este es un dato cualitativo que muestra la superficie en la cual los competidores consiguieron su mejor tiempo de la carrera de 100 km. Hay 4 diferentes: *Sendero*, *Pista*, *Carretera* y *Mixto*, siendo marcados como $1$, $2$, $3$ y $4$, respectivamente.
+-   `pb_elev`: Este es un dato cuantitativo contínuo que muestra la suma de todos los cambios de elevación positivos a lo largo de toda la carrera en la cual obtenieron su mejor tiempo en metros.
+-   `pb100k_time`: Este es un dato cuantitativo discreto que muestra el mejor tiempo del competidor (auto-proclamado) en el formato de hora estándard `hh:mm:ss`.
+-   `pb100k_dec`: Este es un dato cuantitativo contínuo que muestra el mejor tiempo del competidor (auto-proclamado) en horas.
+-   `avg_km`: Este es un dato cuantitativo contínuo que muestra la distancia media que el competidor corre cada semana (auto-proclamado) en kilómetros.
+-   `teique_sf`: Este es un dato cuantitativo contínuo que muestra la puntuación en la prueba de inteligencia emocional. El número está entre $1$ y $7$ y proviene de la media de 30 valores.
+-   `steu_b`: Este es un dato cuantitativo discreto que muestra la puntuación en la prueba de comprensión emocional. El número está entre $0$ y $19$ y proviene de la suma de 19 valores.
+-   `stem_b`: Este es un dato cuantitativo contínuo que muestra la puntuación en la prueba de gestión emocional. El número está entre $0$ y $18$ y proviene de la suma de 19 valores.
+
+# Análisis multivariable
+
+Antes de comenzar, queremos comentar varios problemas que conlleva el dataset utilizado en este proyecto:
+- En primer lugar el dataset esta bastante *tidy*, pero no es perfecto: las variables cualitativas están almacenadas como variables cuantitativas discretas; es decir, tienen un número asociado en vez de un factor. Arreglémoslo.
+
+```{r Datos *Tidy* }
+ultrarunning %>% as_tibble()
+ultrarunning <- ultrarunning %>% as_tibble() %>% mutate(sex = factor(sex,
+  levels=c(1, 2), labels=c("Male", "Female"))) %>% mutate(pb_surface =
+  factor(pb_surface,  levels=c(1, 2, 3, 4), labels=c("Trail", "Track", "Road",
+  "Mixed"))) %>% na.omit(); ultrarunning
+```
+
+Aquí, simplemente hemos omitido todos los NA.
+
+# Gráficos multivariantes
+
+Comenzaremos analizando el gráfico más general que muestra todos los datos cuantitativos y el sexo:
+
+```{r}
+a<-ultrarunning %>%
+  select(2,1,4,6,7,8,9,10) %>%
+  na.omit
+
+pairs(a,
+      col = c("red", "blue")[as.integer(a$sex)],
+      pch = 18)
+```
+
+Gracias a este gráfico podemos observar que a simple vista podemos observar que hay más datos de mujeres (puntos azules) que de hombres (puntos rojos). No parece haber ninguna correlación clara ni ninguna diferencia sustancial entre sexos. Es por esto que hemos decidido crear un amplio abanico de gráficos distintos para intentar visualizar mejor los datos. 
+
+
+Seguimos con los datos separados por sexo para observar si hay alguna diferencia por sexo. Primero un gráfico más complejo y luego uno más visual.
+
+Hombres:
+```{r}
+#gráfico para ver sólo los hombres
+a<-ultrarunning %>%filter(sex == "Male")%>%
+  select(2,1,4,6,7,8,9,10) %>%
+  na.omit
+ggpairs(a)
+
+a<-ultrarunning %>%filter(sex == "Male") %>%
+  select(1,4,6,7,8,9,10)
+stars(a,key.loc = c(15, 1),cex=0.45,
+      labels=row.names(a), draw.segments=TRUE)
+```
+Mujeres:
+```{r}
+#gráfico para ver sólo las mujeres
+a<-ultrarunning %>%filter(sex == "Female")%>%
+  select(2,1,4,6,7,8,9,10) %>%
+  na.omit
+ggpairs(a)
+
+a<-ultrarunning %>%filter(sex == "Female") %>%
+  select(1,4,6,7,8,9,10)
+stars(a,key.loc = c(36, 1),cex=0.45,
+      labels=row.names(a), draw.segments=TRUE)
+```
+Notamos la gran diferencia entre la correlación de EQ y la distancia media en km que corren los atletas. Podemos observar que en hombres la correlación es de -0.208 y la de mujeres es de 0.069. También cabe destacar la correlación entre comprensión emocional y gestión emocinal que en hombres tiene una correlación de 0.315 y en mujeres 0.092.
+
+También observamos que todos los datos cuantitativos siguen distribuciones parecidas a la distribución norma.
+
+Cabe mencionar que a pesar de ser las diferencias en las correlaciones más altas que hemos encontrado faltaría hacer más pruebas y recoger nuevos datos. Esto es debido a que no hay suficientes dato, por ejemplo como hemos visto anteriormente hay muchos más datos de mujeres que de hombres.
+
+Para finalizar haremos un gráfico diferenciando entre los tipos de terreno:
+
+```{r}
+a<-ultrarunning %>%
+  select(3,1,4,6,7,8,9,10) %>%
+  na.omit
+pairs(a,
+      col = c("green", "purple","orange","blue")[as.integer(a$pb_surface)],
+      pch = 18)
+
+ggpairs(a)
+
+
+```
+En cuanto a los terrenos observamos que la moyoría de sujetos corre en sendero y no parece que haya ninguna correlación clara entre tipo de sendero y rendimiento o inteligencia emocional.
+
+Continuaremos con gráficos de estrella según las puntuaciones en las pruebas de EQ separando en puntuaciones: Bajo, Medio y Alto para ver si hay alguna diferencia entre ellas y el rendimiento de los atletas.
+
+Primero graficamos inteligencia emocional.
+Nivel Bajo:
+```{r}
+ultrarunning1 <- ultrarunning %>% mutate(teique_sf = ordered(cut(.$teique_sf, 3),labels=c("Bajo","Medio","Alto")))
+ultrarunning2 <- ultrarunning %>% mutate(steu_b = ordered(cut(.$steu_b, 3),labels=c("Bajo","Medio","Alto")))
+ultrarunning3 <- ultrarunning %>% mutate(stem_b = ordered(cut(.$stem_b, 3),labels=c("Bajo","Medio","Alto")))
+
+a<-ultrarunning1 %>%filter(teique_sf == "Bajo") %>% select(1,4,6,7)
+
+stars(a,key.loc = c(11, 1),cex=0.45,
+      labels=row.names(a), draw.segments=TRUE)
+```
+
+Nivel Medio:
+```{r}
+a<-ultrarunning1 %>%filter(teique_sf == "Medio")%>%
+  select(1,4,6,7) %>%
+  na.omit
+stars(a,key.loc = c(32, 1),cex=0.45,
+      labels=row.names(a), draw.segments=TRUE)
+```
+Nivel Alto:
+```{r}
+a<-ultrarunning1 %>%filter(teique_sf == "Alto")%>%
+  select(1,4,6,7) %>%
+  na.omit
+stars(a,key.loc = c(15, 1),cex=0.45,
+      labels=row.names(a), draw.segments=TRUE)
+```
+Seguimos con la comprensión emocinal.
+Nivel bajo:
+```{r}
+a<-ultrarunning2 %>%filter(steu_b == "Bajo")%>%
+  select(1,4,6,7) %>%
+  na.omit
+stars(a,key.loc = c(15, 1),cex=0.45,
+      labels=row.names(a), draw.segments=TRUE)
+```
+
+Nivel medio:
+```{r}
+a<-ultrarunning2 %>%filter(steu_b == "Medio")%>%
+  select(1,4,6,7) %>%
+  na.omit
+stars(a,key.loc = c(37, 1),cex=0.45,
+      labels=row.names(a), draw.segments=TRUE)
+```
+
+nivel alto:
+```{r}
+a<-ultrarunning2 %>%filter(steu_b == "Alto")%>%
+  select(1,4,6,7) %>%
+  na.omit
+stars(a,key.loc = c(15, 1),cex=0.45,
+      labels=row.names(a), draw.segments=TRUE)
+```
+Finalizamos con la gestión emocional.
+Nivel bajo:
+```{r}
+a<-ultrarunning3 %>%filter(stem_b == "Bajo")%>%
+  select(1,4,6,7) %>%
+  na.omit
+stars(a,key.loc = c(7, 2.5),cex=0.45,
+      labels=row.names(a), draw.segments=TRUE)
+```
+
+Nivel medio
+```{r}
+a<-ultrarunning3 %>%filter(stem_b == "Medio")%>%
+  select(1,4,6,7) %>%
+  na.omit
+stars(a,key.loc = c(35, 1),cex=0.45,
+      labels=row.names(a), draw.segments=TRUE)
+```
+
+Nivel alto:
+```{r}
+a<-ultrarunning3 %>%filter(stem_b == "Alto")%>%
+  select(1,4,6,7) %>%
+  na.omit
+stars(a,key.loc = c(20, 1),cex=0.45,
+      labels=row.names(a), draw.segments=TRUE)
+```
+
+Podemos observar que no hay una correlación clara ni ningún patrón entre los distintos niveles de inteligencia y las otras variables
+
+Concluimos que a pesar de todos los gráficos y análisis realizados no hemos encontrado ninguna correlación relevante. Esto puede ser debido a la gran cantidad de NAs que hemos tenido que reemplazar. Habría que tomar nuevos datos completos de más personas para poder sacar conclusiones más precisas.
+

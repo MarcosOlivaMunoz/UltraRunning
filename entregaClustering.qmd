@@ -211,15 +211,19 @@ fviz_cluster(object = km_clusters, data = data, show.clust.cent = TRUE,
 ```
 ### Observaciones
 ```{r k-means3}
+#| echo: true
+km_clusters$centers
+```
+```{r k-means5}
+#| echo: true
+km_clusters$betweenss/km_clusters$totss*100
+```
+```{r k-means4}
 matriz1 = matrix(0, nrow = 3, ncol = 3)
 for (i in 1:124){
   matriz1[km_clusters$cluster[i], as.numeric(ultrarunning_test[i,11])] = 1 + matriz1[km_clusters$cluster[i], as.numeric(ultrarunning_test[i,11])]
 }
 matriz1
-```
-```{r k-means4}
-#| echo: true
-km_clusters$betweenss/km_clusters$totss*100
 ```
 :::
 
@@ -245,7 +249,7 @@ fviz_cluster(object = pam_clusters, data = data, ellipse.type = "euclid", repel 
 
 ### Observaciones
 ```{r PAM3}
-ultrarunning_tot[c(87,74,25),] %>% select(c(-3, -6)) %>% bind_cols(.,ultrarunning_test[c(87,74,25), 11])
+ultrarunning_tot[c(107,74,31),] %>% select(c(-3, -6)) %>% bind_cols(.,ultrarunning_test[c(107,74,31), 11])
 ```
 ```{r PAM4}
 matriz2 = matrix(0, nrow = 3, ncol = 3)

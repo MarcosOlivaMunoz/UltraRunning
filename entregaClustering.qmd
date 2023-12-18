@@ -1,0 +1,328 @@
+---
+title: "Ultrarunning"
+subtitle: "Análisis de Componentes Principales y Clustering"
+author:
+  - "Marcos Oliva"
+  - "Hugo García"
+date: 12/20/2023
+format:
+  revealjs:
+    theme: beige
+    transition: slide
+embed-resources: true
+lang: ES
+---
+
+# Contexto y cambios
+```{r Setup}
+#| include: false
+knitr::opts_chunk$set(echo=FALSE)
+library("tidyverse", warn.conflicts = FALSE)
+library(GGally)
+library(factoextra)
+library(cluster)
+library(ggpubr)
+```
+
+```{r Datos antiguos}
+#| include: false
+load(url("https://www.causeweb.org/tshs/datasets/ultrarunning.RData"))
+ultrarunning <- ultrarunning %>% as_tibble() %>% mutate(sex = factor(sex,
+  levels=c(1, 2), labels=c("Male", "Female"))) %>% mutate(pb_surface =
+  factor(pb_surface,  levels=c(1, 2, 3, 4), labels=c("Trail", "Track", "Road",
+  "Mixed")))
+ultrarunning <- ultrarunning %>% 
+          replace_na(replace = list(age = round(mean(.$age, na.rm = T),0),
+                                    pb_elev = round(mean(.$pb_elev, na.rm = T),0),
+                                    pb100k_dec = round(mean(.$pb100k_dec, na.rm = T),2),
+                                    avg_km = round(mean(.$avg_km, na.rm = T),0),
+                                    teique_sf = round(mean(.$teique_sf, na.rm = T),6),
+                                    steu_b = round(mean(.$steu_b, na.rm = T),0),
+                                    stem_b = round(mean(.$stem_b, na.rm = T),6)))
+```
+
+## Sobre los datos {.center}
+
+ - Mantenemos el conjunto de datos
+ - Pasamos de reemplazar los `NA` a omitirlos
+
+![](imagen.jpg){.r-stretch}
+
+---
+
+:::{.panel-tabset}
+### Datos antiguos
+```{r ggpairs antiguo}
+ggpairs(ultrarunning %>%
+  select(2,1,3,4,6,7,8,9,10))
+```
+
+### Datos nuevos
+
+```{r Datos nuevos}
+#| include: false
+load(url("https://www.causeweb.org/tshs/datasets/ultrarunning.RData"))
+ultrarunning <- ultrarunning %>% as_tibble() %>% mutate(sex = factor(sex,
+  levels=c(1, 2), labels=c("Male", "Female"))) %>% mutate(pb_surface =
+  factor(pb_surface,  levels=c(1, 2, 3, 4), labels=c("Trail", "Track", "Road",
+  "Mixed"))) %>% na.omit()
+ultrarunning_tot <- ultrarunning %>% mutate(teique_sf = ordered(cut(.$teique_sf, 3),labels=c("Bajo","Medio","Alto"))) %>% mutate(steu_b = ordered(cut(.$steu_b, 3),labels=c("Bajo","Medio","Alto"))) %>% mutate(stem_b = ordered(cut(.$stem_b, 3),labels=c("Bajo","Medio","Alto")))
+```
+
+```{r ggpairs nuevo}
+ggpairs(ultrarunning %>%
+  select(2,1,3,4,6,7,8,9,10))
+```
+:::
+
+# ACP
+
+## Variable de perfil
+
+```{r perfil}
+#| echo: true
+test_header <- mutate(ultrarunning[1:10,], test = percent_rank(teique_sf) + percent_rank(steu_b) + percent_rank(stem_b))
+ultrarunning[1:10,8:10] %>% bind_cols(test_header$test)
+```
+
+
+## {auto-animate=true}
+
+::: {style="margin-top: 200px; font-size: 3.5em; color: red;"}
+Observación 56
+:::
+
+## {auto-animate=true}
+
+::: {style="margin-top: 50px;"}
+Observación 56
+:::
+
+```{r ult_test}
+#| include: false
+ultrarunning_test <- ultrarunning %>% mutate(., test = percent_rank(teique_sf) + percent_rank(steu_b) + percent_rank(stem_b)) %>% 
+  mutate(test = ordered(cut(.$test, 3),labels=c("Bajo","Medio","Alto")))
+```
+
+```{r 56}
+#| echo: true
+ultrarunning_tot[56,] %>% select(c(-3, -6)) %>% merge(ultrarunning_test[56, 11])
+```
+
+## {auto-animate=true}
+
+::: {style="margin-top: 50px;"}
+Observación 56
+:::
+
+```{r 56 continuación}
+#| echo: true
+ultrarunning_tot[56,] %>% select(c(-3, -6)) %>% merge(ultrarunning_test[56, 11])
+```
+```{r 56 continuación2}
+ultrarunning_56 <- ultrarunning %>% bind_cols(.,is_56 = factor(c(rep(1,55), 2, rep(1,69)), labels = c("No 56", "56")))
+plot1 <- ggplot(ultrarunning_56, aes(age, fill=is_56, color=is_56)) + geom_histogram() + scale_color_manual(values = c("#FF6666", "#66FF66")) + scale_fill_manual(values = c("#FF6666", "#66FF66")) + theme(legend.position="none")
+plot2 <- ggplot(ultrarunning_56, aes(avg_km, fill=is_56, color=is_56)) + geom_histogram() + scale_color_manual(values = c("#FF6666", "#66FF66")) + scale_fill_manual(values = c("#FF6666", "#66FF66")) + theme(legend.position="none")
+plot3 <- ggplot(ultrarunning_56, aes(pb100k_dec, fill=is_56, color=is_56)) + geom_histogram() + scale_color_manual(values = c("#FF6666", "#66FF66")) + scale_fill_manual(values = c("#FF6666", "#66FF66")) + theme(legend.position="none")
+ggarrange(plot1, plot3, plot2, ncol = 3)
+```
+
+## ACP con y sin 56 {visibility="uncounted"}
+
+:::{.panel-tabset}
+### Con 56
+```{r ACP 1 old}
+data.old <- ultrarunning_test %>% select(1,4,6,7) %>% scale()
+data.old.acp <- prcomp(data.old)
+lambdas <- get_eigenvalue(data.old.acp)
+fviz_eig(data.old.acp, addlabels = TRUE, ylim=c(0,100))
+```
+### Sin 56
+```{r sin 56}
+#| include: false
+ultrarunning <- ultrarunning[-56,]
+ultrarunning_tot <- ultrarunning_tot[c(-56),]
+ultrarunning_test <- ultrarunning_test[c(-56),]
+```
+
+```{r ACP 1 new}
+data <- ultrarunning_test %>% select(1,4,6,7) %>% scale()
+data.acp <- prcomp(data)
+lambdas <- get_eigenvalue(data.acp)
+fviz_eig(data.acp, addlabels = TRUE, ylim=c(0,100))
+```
+:::
+:::
+
+## ACP con y sin 56 {visibility="uncounted"}
+
+:::{.panel-tabset}
+### Con 56
+```{r ACP 2 old}
+fviz_pca_var(data.old.acp, col.var = "contrib",
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+             repel = TRUE)
+```
+### Sin 56
+```{r ACP 2 new}
+fviz_pca_var(data.acp, col.var = "contrib",
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+             repel = TRUE)
+```
+:::
+
+## ACP con y sin 56 {visibility="uncounted"}
+
+:::{.panel-tabset}
+### Con 56
+```{r ACP 3 old}
+fviz_pca_biplot(data.old.acp, repel = TRUE,
+                col.var = "#Fc4E07", # color para las variables
+                col.ind = "#EEEEEE"  # color para las observaciones
+) + theme_dark()
+```
+### Sin 56
+```{r ACP 3 new}
+fviz_pca_biplot(data.acp, repel = TRUE,
+                col.var = "#Fc4E07", # color para las variables
+                col.ind = "#EEEEEE"  # color para las observaciones
+) + theme_dark()
+```
+:::
+
+# Clustering
+
+## k-means
+:::{.panel-tabset}
+### Previo
+```{r k-means}
+fviz_nbclust(x = data, FUNcluster = kmeans, method = "wss",
+             diss = dist(data, method = "euclidean")) +
+  geom_vline(xintercept = 3, linetype = 2)
+```
+### Clusters
+```{r k-means2}
+set.seed(2023)
+km_clusters <- kmeans(x = data, centers = 3, nstart = 2500)
+fviz_cluster(object = km_clusters, data = data, show.clust.cent = TRUE,
+             ellipse.type = "euclid", star.plot = TRUE, repel = TRUE) +
+  theme_bw() +
+  theme(legend.position = "none")
+```
+### Observaciones
+```{r k-means3}
+matriz1 = matrix(0, nrow = 3, ncol = 3)
+for (i in 1:124){
+  matriz1[km_clusters$cluster[i], as.numeric(ultrarunning_test[i,11])] = 1 + matriz1[km_clusters$cluster[i], as.numeric(ultrarunning_test[i,11])]
+}
+matriz1
+```
+```{r k-means4}
+#| echo: true
+km_clusters$betweenss/km_clusters$totss*100
+```
+:::
+
+## PAM
+:::{.panel-tabset}
+### Previo
+```{r PAM}
+fviz_nbclust(x = data, FUNcluster = pam, method = "wss",
+             diss = dist(data, method = "euclidean")) + 
+  geom_vline(xintercept = 3, linetype = 2)
+```
+### Clusters
+```{r PAM2}
+pam_clusters = pam(x = data, k = 3, metric = "manhattan")
+medoids <- data.acp$x
+medoids <- medoids[pam_clusters$id.med, c("PC1", "PC2")] %>% as.data.frame(medoids)
+colnames(medoids) <- c("x", "y")
+fviz_cluster(object = pam_clusters, data = data, ellipse.type = "euclid", repel = TRUE) +
+  theme_bw() +
+  geom_point(data = medoids, color = "gold3", size = 2) +
+  theme(legend.position = "none")
+```
+
+### Observaciones
+```{r PAM3}
+ultrarunning_tot[c(87,74,25),] %>% select(c(-3, -6)) %>% bind_cols(.,ultrarunning_test[c(87,74,25), 11])
+```
+```{r PAM4}
+matriz2 = matrix(0, nrow = 3, ncol = 3)
+for (i in 1:124){
+  matriz2[pam_clusters$cluster[i], as.numeric(ultrarunning_test[i,11])] = 1 + matriz2[pam_clusters$cluster[i], as.numeric(ultrarunning_test[i,11])]
+}
+matriz2
+```
+:::
+
+## Jerarquical
+:::{.panel-tabset}
+### Previo
+```{r Hierarchical}
+#| echo: true
+mat_dist <- dist(x = data, method = "euclidean")
+hc_complete <- hclust(d = mat_dist, method = "complete")
+hc_average <- hclust(d = mat_dist, method = "average")
+hc_ward <- hclust(d = mat_dist, method = "ward.D2")
+cor(x = mat_dist, cophenetic(hc_complete))
+cor(x = mat_dist, cophenetic(hc_average))
+cor(x = mat_dist, cophenetic(hc_ward))
+```
+### Estructura
+```{r Hierarchical2}
+#| warning: false
+hc_average <- data %>% dist(method = "euclidean") %>%
+  hclust(method = "average")
+fviz_dend(x = hc_average, k = 8, cex = 0.6)
+```
+### Clusters
+```{r Hierarchical3}
+fviz_cluster(object = list(data = data, cluster = cutree(hc_average, k = 8)),
+             ellipse.type = "convex",
+             repel = TRUE,
+             show.clust.cent = FALSE) +
+  theme_bw()
+```
+### Observaciones
+```{r Hierarchical4}
+avg_clusters=cutree(hc_average, k = 8)
+matriz3 = matrix(0, nrow = 8, ncol = 3)
+for (i in 1:124){
+  matriz3[avg_clusters[i], as.numeric(ultrarunning_test[i,11])] = 1 + matriz3[avg_clusters[i], as.numeric(ultrarunning_test[i,11])]
+}
+matriz3
+```
+:::
+
+## Por variable de perfil
+:::{.panel-tabset}
+### Nota general
+```{r test}
+fviz_pca_biplot(data.acp, geom = "point", repel = TRUE, col.ind = ultrarunning_test$test,
+                palette = c("red", "gold", "darkgreen"), invisible = "var") + theme_dark()
+
+```
+### Inteligencia
+```{r teique_sf}
+fviz_pca_biplot(data.acp, geom = "point", repel = TRUE,
+                col.ind = ultrarunning_tot$teique_sf, palette = c("red", "gold", "darkgreen"), invisible = "var") + theme_dark()
+```
+### Comprensión
+```{r steu_b}
+fviz_pca_biplot(data.acp, geom = "point", repel = TRUE,
+                col.ind = ultrarunning_tot$steu_b, palette = c("red", "gold", "darkgreen"), invisible = "var") + theme_dark()
+```
+### Gestión
+```{r stem_b}
+fviz_pca_biplot(data.acp, geom = "point", repel = TRUE,
+                col.ind = ultrarunning_tot$stem_b, palette = c("red", "gold", "darkgreen"), invisible = "var") + theme_dark()
+```
+:::
+
+## Conclusiones
+:::{.incremental}
+ - Los outliers pueden cambiar drasticamente el análisis del problema
+ - El test no mide correctamente lo que queremos... o sí
+ - El mejor clustering para nosotros es el k-means
+:::
